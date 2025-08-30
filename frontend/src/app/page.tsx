@@ -2,19 +2,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Upload,
   Video,
-  FileText,
   LogOut,
   User,
   Search,
-  Heart,
   Users,
   Clock,
   AlertTriangle,
   Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Header from "../components/header";
 
 interface UserInfo {
   userId: string | null;
@@ -70,11 +68,6 @@ export default function HomePage() {
     setIsLoading(false);
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    router.push("/auth/signin");
-  };
-
   const handleFindLostPerson = () => {
     router.push("/search");
   };
@@ -96,38 +89,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-card border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-md">
-                <Shield color="white" className="h-7 w-7 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground">FindHope</h1>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-muted-foreground flex items-center">
-                <User className="h-4 w-4 mr-1" />
-                12345678
-              </div>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                size="sm"
-                className="text-destructive hover:text-destructive border-destructive/20 hover:bg-destructive/5 bg-transparent"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Гарах
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
+      <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
-          {/* Left side - Find Person Section */}
           <div className="flex flex-col justify-center">
             <div className="text-center lg:text-left">
               <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent mb-6 text-balance leading-tight">
@@ -156,7 +120,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right side - Video Section */}
           <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden hover:shadow-lg transition-shadow duration-300">
             <div className="p-6 border-b border-border">
               <div className="flex items-center space-x-3">
