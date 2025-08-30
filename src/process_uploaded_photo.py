@@ -1,6 +1,8 @@
 import os
 import cv2
 import numpy as np
+import sys
+sys.path.append('.')
 from models.arcface.index import ArcFaceModel
 
 # Initialize ArcFace
