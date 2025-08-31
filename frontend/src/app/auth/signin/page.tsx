@@ -36,12 +36,10 @@ export default function SignIn() {
     setIsLoading(true);
 
     try {
-      if (id === "1234567" && password === "password") {
+      if (id === "12345678" && password === "password") {
         localStorage.setItem("isAuthenticated", "true");
 
-        toast.success("Амжилттай нэвтэрлээ!", {
-          description: "Таны хүсэлт амжилттай боловсруулагдлаа",
-        });
+        toast.success("Амжилттай нэвтэрлээ!");
 
         router.push("/");
       } else {
@@ -177,23 +175,6 @@ export default function SignIn() {
               </p>
             </div>
           </div>
-        </div>
-
-        {/* Support Contact */}
-        <div className="mt-4 text-center">
-          <p className="text-xs text-muted-foreground">
-            Техникийн тусламж: <span className="text-primary">111</span>
-          </p>
-        </div>
-
-        {/* Demo Credentials */}
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-xs text-blue-800 font-medium mb-1">
-            Demo Credentials:
-          </p>
-          <p className="text-xs text-blue-700">
-            ID: 1234567 | Password: password
-          </p>
         </div>
       </div>
     </div>

@@ -1,18 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Video,
-  LogOut,
-  User,
-  Search,
-  Users,
-  Clock,
-  AlertTriangle,
-  Shield,
-} from "lucide-react";
+import { Video, Search, Users, Clock, AlertTriangle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "../components/header";
+import UploadModal from "../components/upload-modal";
 
 interface UserInfo {
   userId: string | null;
@@ -54,6 +46,7 @@ export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -69,7 +62,11 @@ export default function HomePage() {
   }, [router]);
 
   const handleFindLostPerson = () => {
-    router.push("/search");
+    setIsUploadModalOpen(true);
+  };
+
+  const handleAddNewPerson = () => {
+    setIsUploadModalOpen(true);
   };
 
   if (isLoading) {
@@ -105,14 +102,16 @@ export default function HomePage() {
               </p>
 
               <div className="space-y-4">
-                <Button
-                  onClick={handleFindLostPerson}
-                  size="lg"
-                  className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white px-12 py-6 text-xl font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 w-full lg:w-auto border-0"
-                >
-                  <Search className="h-8 w-8 mr-4" />
-                  Алга болсон хүн хайх
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    onClick={handleFindLostPerson}
+                    size="lg"
+                    className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white px-8 py-6 text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                  >
+                    <Search className="h-6 w-6 mr-3" />
+                    Алга болсон хүн хайх
+                  </Button>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Зураг оруулж, видеоноос хайж, олох үйл явц
                 </p>
@@ -153,8 +152,18 @@ export default function HomePage() {
             <h3 className="text-2xl font-semibold text-card-foreground">
               Оруулсан хүмүүсийн жагсаалт
             </h3>
-            <div className="text-sm text-muted-foreground bg-green-50 px-3 py-1 rounded-full border border-green-200">
-              Нийт: {mockUploadedPersons.length} хүн
+            <div className="flex items-center space-x-3">
+              <div className="text-sm text-muted-foreground bg-green-50 px-3 py-1 rounded-full border border-green-200">
+                Нийт: {mockUploadedPersons.length} хүн
+              </div>
+              <Button
+                onClick={handleAddNewPerson}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Шинэ хүн
+              </Button>
             </div>
           </div>
 
@@ -267,6 +276,10 @@ export default function HomePage() {
           </div>
         </div>
       </main>
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+      />
     </div>
   );
 }
