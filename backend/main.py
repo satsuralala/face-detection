@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.core.database import connect_to_mongo
-from app.routes.info_routes import router as info_router
+from app.routes.info import router as info_router
 
 app = FastAPI(title="My FastAPI + MongoDB Project")
 
@@ -10,4 +10,4 @@ async def on_startup():
     await connect_to_mongo()
 
 # Include **all routes under /info**
-app.include_router(info, prefix="/info")
+app.include_router(info_router, prefix="/info")
