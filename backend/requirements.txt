@@ -2,6 +2,7 @@ fastapi
 uvicorn
 gunicorn
 setuptools>=65.5.0
+python-multipart
 wheel
 motor
 beanie
