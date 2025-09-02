@@ -1,14 +1,13 @@
-from backend.app.schemas.schema import PersonCreate
+from app.schemas.schema import PersonCreate
 from fastapi import APIRouter
-from backend.app.models.model import User, Person
+from app.models.model import Person
 
 router = APIRouter()
 
 
 @router.get("/")
-async def get_users():
-    users = await User.find_all().to_list()
-    return {"users": users}
+async def health():
+    return {"status": "ok"}
 
 
 @router.post("/person")
