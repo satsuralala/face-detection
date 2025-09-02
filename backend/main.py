@@ -9,5 +9,5 @@ app = FastAPI(title="My FastAPI + MongoDB Project")
 async def on_startup():
     await connect_to_mongo()
 
-# Include **all routes under /info**
+
 app.include_router(info_router, prefix="/info")
