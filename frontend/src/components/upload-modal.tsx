@@ -5,14 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
+import { addPerson, PersonData } from "../../lib/api";
 
 interface PersonInfo {
   name: string;
   age: string;
-  lastSeen: string;
-  location: string;
-  phone: string;
-  description: string;
+  last_seen_data: string;
+  last_seen_location: string;
+  phone_number: string;
+  add_info: string;
   image: File | null;
 }
 
@@ -25,10 +26,10 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
   const [personInfo, setPersonInfo] = useState<PersonInfo>({
     name: "",
     age: "",
-    lastSeen: "",
-    location: "",
-    phone: "",
-    description: "",
+    last_seen_data: "",
+    last_seen_location: "",
+    phone_number: "",
+    add_info: "",
     image: null,
   });
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -59,17 +60,36 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Prepare data for backend API
+      const personData: PersonData = {
+        name: personInfo.name,
+        age: personInfo.age,
+        last_seen_data: personInfo.last_seen_data,
+        last_seen_location: personInfo.last_seen_location,
+        phone_number: personInfo.phone_number,
+        add_info: personInfo.add_info,
+        img: "", // This will be populated by the backend with Cloudinary URL
+      };
 
-      // Store person info in localStorage for the search page
-      localStorage.setItem("searchingPerson", JSON.stringify(personInfo));
+      // Call the backend API
+      const response = await addPerson(personData, personInfo.image);
+
+      // Show success message
+      alert("Хүн амжилттай нэмэгдлээ!");
+
+      // Store person info in localStorage for the search page (keep existing functionality)
+      localStorage.setItem("searchingPerson", JSON.stringify({
+        ...personInfo,
+        id: response.person._id,
+        image_url: response.person.image_url
+      }));
 
       // Close modal and redirect to search page
       onClose();
       router.push("/search/person");
     } catch (error) {
-      alert("Алдаа гарлаа, дахин оролдоно уу");
+      console.error("Error adding person:", error);
+      alert(`Алдаа гарлаа: ${error instanceof Error ? error.message : "Дахин оролдоно уу"}`);
     } finally {
       setIsLoading(false);
     }
@@ -213,11 +233,11 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 <Input
                   id="lastSeen"
                   type="date"
-                  value={personInfo.lastSeen}
+                  value={personInfo.last_seen_data}
                   onChange={(e) =>
                     setPersonInfo((prev) => ({
                       ...prev,
-                      lastSeen: e.target.value,
+                      last_seen_data: e.target.value,
                     }))
                   }
                   className="pl-10"
@@ -231,11 +251,11 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   id="phone"
-                  value={personInfo.phone}
+                  value={personInfo.phone_number}
                   onChange={(e) =>
                     setPersonInfo((prev) => ({
                       ...prev,
-                      phone: e.target.value,
+                      phone_number: e.target.value,
                     }))
                   }
                   placeholder="Утасны дугаар"
@@ -251,11 +271,11 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
               <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 id="location"
-                value={personInfo.location}
+                value={personInfo.last_seen_location}
                 onChange={(e) =>
                   setPersonInfo((prev) => ({
                     ...prev,
-                    location: e.target.value,
+                    last_seen_location: e.target.value,
                   }))
                 }
                 placeholder="Газрын нэр"
@@ -268,11 +288,11 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             <Label htmlFor="description">Нэмэлт мэдээлэл</Label>
             <textarea
               id="description"
-              value={personInfo.description}
+              value={personInfo.add_info}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                 setPersonInfo((prev) => ({
                   ...prev,
-                  description: e.target.value,
+                  add_info: e.target.value,
                 }))
               }
               placeholder="Хүний талаарх нэмэлт мэдээлэл, хувцас, онцлог шинж чанар..."

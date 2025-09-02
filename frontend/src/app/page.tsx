@@ -5,6 +5,7 @@ import { Video, Search, Users, Clock, AlertTriangle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "../components/header";
 import UploadModal from "../components/upload-modal";
+import { getPersons, PersonsListResponse } from "../../lib/api";
 
 interface UserInfo {
   userId: string | null;
@@ -12,42 +13,39 @@ interface UserInfo {
   loginTime: string | null;
 }
 
-const mockUploadedPersons = [
-  {
-    id: 1,
-    name: "Батбаяр",
-    age: 25,
-    lastSeen: "2024-01-15",
-    location: "Улаанбаатар хот",
-    image: "/mongolian-man-portrait.png",
-    status: "Хайж байна",
-  },
-  {
-    id: 2,
-    name: "Сарангэрэл",
-    age: 32,
-    lastSeen: "2024-01-10",
-    location: "Дархан хот",
-    image: "/mongolian-woman-portrait.png",
-    status: "Хайж байна",
-  },
-  {
-    id: 3,
-    name: "Төмөрбаатар",
-    age: 45,
-    lastSeen: "2024-01-08",
-    location: "Эрдэнэт хот",
-    image: "/mongolian-middle-aged-man-portrait.png",
-    status: "Олдсон",
-  },
-];
+interface Person {
+  _id: string;
+  name: string;
+  age: string;
+  last_seen_data: string;
+  last_seen_location: string;
+  phone_number: string;
+  add_info: string;
+  image_url: string;
+}
 
 export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [persons, setPersons] = useState<Person[]>([]);
+  const [personsLoading, setPersonsLoading] = useState(false);
   const router = useRouter();
+
+  const fetchPersons = async () => {
+    setPersonsLoading(true);
+    try {
+      const response = await getPersons();
+      setPersons(response.persons);
+    } catch (error) {
+      console.error("Error fetching persons:", error);
+      // Keep empty array if API fails
+      setPersons([]);
+    } finally {
+      setPersonsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated");
@@ -59,6 +57,9 @@ export default function HomePage() {
 
     setIsAuthenticated(true);
     setIsLoading(false);
+
+    // Fetch persons data when authenticated
+    fetchPersons();
   }, [router]);
 
   const handleFindLostPerson = () => {
@@ -67,6 +68,12 @@ export default function HomePage() {
 
   const handleAddNewPerson = () => {
     setIsUploadModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsUploadModalOpen(false);
+    // Refresh the persons list when modal closes (in case a new person was added)
+    fetchPersons();
   };
 
   if (isLoading) {
@@ -154,7 +161,7 @@ export default function HomePage() {
             </h3>
             <div className="flex items-center space-x-3">
               <div className="text-sm text-muted-foreground bg-green-50 px-3 py-1 rounded-full border border-green-200">
-                Нийт: {mockUploadedPersons.length} хүн
+                Нийт: {persons.length} хүн
               </div>
               <Button
                 onClick={handleAddNewPerson}
@@ -168,52 +175,68 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockUploadedPersons.map((person) => (
-              <div
-                key={person.id}
-                className="p-6 bg-background rounded-lg border border-border hover:shadow-md hover:border-green-200 transition-all duration-300"
-              >
-                <div className="flex items-start space-x-4">
-                  <img
-                    src={person.image || "/placeholder.svg"}
-                    alt={person.name}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-green-200"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-lg font-semibold text-foreground mb-1">
-                      {person.name}
-                    </h4>
-                    <p className="text-sm text-muted-foreground mb-1">
-                      Нас: {person.age}
-                    </p>
-                    <p className="text-sm text-muted-foreground mb-1">
-                      Сүүлд харагдсан: {person.lastSeen}
-                    </p>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {person.location}
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          person.status === "Олдсон"
-                            ? "bg-green-500"
-                            : "bg-amber-500"
-                        }`}
-                      ></div>
-                      <span
-                        className={`text-xs font-medium ${
-                          person.status === "Олдсон"
-                            ? "text-green-600"
-                            : "text-amber-600"
-                        }`}
-                      >
-                        {person.status}
-                      </span>
+            {personsLoading ? (
+              <div className="col-span-full text-center py-8">
+                <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Мэдээлэл уншиж байна...</p>
+              </div>
+            ) : persons.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <p className="text-lg text-muted-foreground mb-2">
+                  Одоогоор хүн нэмэгдээгүй байна
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  "Шинэ хүн" товчийг дарж эхний хүнээ нэмнэ үү
+                </p>
+              </div>
+            ) : (
+              persons.map((person) => (
+                <div
+                  key={person._id}
+                  className="p-6 bg-background rounded-lg border border-border hover:shadow-md hover:border-green-200 transition-all duration-300"
+                >
+                  <div className="flex items-start space-x-4">
+                    <img
+                      src={person.image_url || "/placeholder.svg"}
+                      alt={person.name}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-green-200"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-lg font-semibold text-foreground mb-1">
+                        {person.name}
+                      </h4>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        Нас: {person.age}
+                      </p>
+                      {person.last_seen_data && (
+                        <p className="text-sm text-muted-foreground mb-1">
+                          Сүүлд харагдсан: {person.last_seen_data}
+                        </p>
+                      )}
+                      {person.last_seen_location && (
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {person.last_seen_location}
+                        </p>
+                      )}
+                      {person.phone_number && (
+                        <p className="text-sm text-muted-foreground mb-1">
+                          Утас: {person.phone_number}
+                        </p>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                        <span className="text-xs font-medium text-amber-600">
+                          Хайж байна
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -278,7 +301,7 @@ export default function HomePage() {
       </main>
       <UploadModal
         isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
+        onClose={handleModalClose}
       />
     </div>
   );
