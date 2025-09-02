@@ -9,3 +9,4 @@ class Person(Document):
     phone_number: str
     last_seen_location: str
     add_info: str
+    image_url: str = ""
