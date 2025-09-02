@@ -1,18 +1,27 @@
 from app.schemas.schema import PersonCreate
 from fastapi import APIRouter
 from app.models.model import Person
+import cloudinary
+import cloudinary.uploader
+from fastapi import File, UploadFile
+
+
+cloudinary.config(
+    cloud_name="dlb659h6k",
+    api_key="898467165237294",
+    api_secret="Ahj_Ir26lqAVJix7x6cFVLHLbE4"
+)
 
 router = APIRouter()
 
 
-@router.get("/")
-async def health():
-    return {"status": "ok"}
-
-
 @router.post("/person")
-async def add_person(person: PersonCreate):
-    new_person = Person(**person.dict())
+async def add_person(person: PersonCreate, file: UploadFile = File(...)):
+
+    result = cloudinary.uploader.upload(file.file, folder="people_images")
+    image_url = result.get("secure_url")
+
+    new_person = Person(**person.dict(), image_url=image_url)
     await new_person.insert()
     return {"status": "success", "person": new_person}
 
