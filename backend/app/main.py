@@ -10,4 +10,4 @@ async def on_startup():
     await connect_to_mongo()
 
 
-app.include_router(info_router, prefix="/info")
+app.include_router(info_router, prefix="/api")
