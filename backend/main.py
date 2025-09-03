@@ -8,7 +8,7 @@ app = FastAPI(title="My FastAPI + MongoDB Project")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or "*"
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

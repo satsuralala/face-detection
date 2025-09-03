@@ -1,19 +1,20 @@
 "use client";
 import { useState, useRef } from "react";
-import { X, Camera, Upload, User, MapPin, Calendar, Phone } from "lucide-react";
+import { X, Upload, User, MapPin, Calendar, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import axios from "axios";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-
 interface PersonInfo {
   name: string;
   age: string;
-  lastSeen: string;
-  location: string;
-  phone: string;
-  description: string;
-  image: File | null;
+  last_seen_data: string;
+  last_seen_location: string;
+  phone_number: string;
+  add_info: string;
+  img: File | null;
 }
 
 interface UploadModalProps {
@@ -25,58 +26,64 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
   const [personInfo, setPersonInfo] = useState<PersonInfo>({
     name: "",
     age: "",
-    lastSeen: "",
-    location: "",
-    phone: "",
-    description: "",
-    image: null,
+    last_seen_data: "",
+    last_seen_location: "",
+    add_info: "",
+    phone_number: "",
+    img: null,
   });
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPersonInfo((prev) => ({ ...prev, image: file }));
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (!personInfo.name || !personInfo.age || !personInfo.image) {
-      alert("Нэр, нас, зураг заавал оруулна уу");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!personInfo.name || !personInfo.age || !personInfo.img) {
+        toast("Нэр, нас, зураг заавал оруулна уу");
+        return;
+      }
 
-      // Store person info in localStorage for the search page
-      localStorage.setItem("searchingPerson", JSON.stringify(personInfo));
+      const fileToBase64 = (file: File) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (err) => reject(err);
+        });
 
-      // Close modal and redirect to search page
-      onClose();
-      router.push("/search/person");
+      const base64Image = await fileToBase64(personInfo.img);
+
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+      const payload = {
+        name: personInfo.name,
+        age: personInfo.age,
+        last_seen_data: personInfo.last_seen_data,
+        last_seen_location: personInfo.last_seen_location,
+        phone_number: personInfo.phone_number,
+        add_info: personInfo.add_info,
+        img: base64Image,
+      };
+
+      const { status } = await axios.post(`${API_URL}/person`, payload, {
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (status === 200) {
+        toast("Амжилттай нэмлээ!");
+        router.push("/search");
+      }
     } catch (error) {
-      alert("Алдаа гарлаа, дахин оролдоно уу");
+      console.error(error);
+      toast("Алдаа гарлаа, дахин оролдоно уу");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleCameraCapture = () => {
-    fileInputRef.current?.click();
   };
 
   if (!isOpen) return null;
@@ -98,11 +105,11 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
           </Button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Image Upload Section */}
           <div className="space-y-4">
-            <Label className="text-base font-medium">Хүний зураг</Label>
+            <Label htmlFor="img" className="text-base font-medium">
+              Хүний зураг
+            </Label>
             <div className="flex items-center space-x-4">
               <div className="flex-1">
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors">
@@ -118,7 +125,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                         variant="outline"
                         onClick={() => {
                           setImagePreview("");
-                          setPersonInfo((prev) => ({ ...prev, image: null }));
+                          setPersonInfo((prev) => ({ ...prev, img: null }));
                         }}
                         className="text-red-600 border-red-300 hover:bg-red-50"
                       >
@@ -140,15 +147,6 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={handleCameraCapture}
-                          className="flex items-center space-x-2"
-                        >
-                          <Camera className="h-4 w-4" />
-                          <span>Камера</span>
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
                           onClick={() => fileInputRef.current?.click()}
                           className="flex items-center space-x-2"
                         >
@@ -160,18 +158,29 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                   )}
                 </div>
                 <input
+                  id="img"
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  onChange={handleImageUpload}
+                  aria-label="Image upload input"
+                  title="Image upload input"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setPersonInfo((prev) => ({ ...prev, img: file }));
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setImagePreview(event.target?.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
                   className="hidden"
-                  aria-label="Upload image file"
                 />
               </div>
             </div>
           </div>
 
-          {/* Personal Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Нэр *</Label>
@@ -207,17 +216,17 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="lastSeen">Сүүлд харагдсан огноо</Label>
+              <Label htmlFor="last_seen_data">Сүүлд харагдсан огноо</Label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  id="lastSeen"
+                  id="last_seen_data"
                   type="date"
-                  value={personInfo.lastSeen}
+                  value={personInfo.last_seen_data}
                   onChange={(e) =>
                     setPersonInfo((prev) => ({
                       ...prev,
-                      lastSeen: e.target.value,
+                      last_seen_data: e.target.value,
                     }))
                   }
                   className="pl-10"
@@ -226,16 +235,16 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Утасны дугаар</Label>
+              <Label htmlFor="phone_number">Утасны дугаар</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  id="phone"
-                  value={personInfo.phone}
+                  id="phone_number"
+                  value={personInfo.phone_number}
                   onChange={(e) =>
                     setPersonInfo((prev) => ({
                       ...prev,
-                      phone: e.target.value,
+                      phone_number: e.target.value,
                     }))
                   }
                   placeholder="Утасны дугаар"
@@ -246,16 +255,16 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="location">Сүүлд харагдсан газар</Label>
+            <Label htmlFor="last_seen_location">Сүүлд харагдсан газар</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                id="location"
-                value={personInfo.location}
+                id="last_seen_location"
+                value={personInfo.last_seen_location}
                 onChange={(e) =>
                   setPersonInfo((prev) => ({
                     ...prev,
-                    location: e.target.value,
+                    last_seen_location: e.target.value,
                   }))
                 }
                 placeholder="Газрын нэр"
@@ -265,14 +274,14 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Нэмэлт мэдээлэл</Label>
+            <Label htmlFor="add_info">Нэмэлт мэдээлэл</Label>
             <textarea
-              id="description"
-              value={personInfo.description}
+              id="add_info"
+              value={personInfo.add_info}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                 setPersonInfo((prev) => ({
                   ...prev,
-                  description: e.target.value,
+                  add_info: e.target.value,
                 }))
               }
               placeholder="Хүний талаарх нэмэлт мэдээлэл, хувцас, онцлог шинж чанар..."
@@ -281,7 +290,6 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             />
           </div>
 
-          {/* Action Buttons */}
           <div className="flex space-x-3 pt-4">
             <Button
               type="button"
