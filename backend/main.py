@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.core.database import connect_to_mongo
 from app.routes.route import router as info_router
+from app.routes.video_stream import router as video_router
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="My FastAPI + MongoDB Project")
@@ -21,3 +22,4 @@ async def on_startup():
 
 
 app.include_router(info_router, prefix="/api")
+app.include_router(video_router, prefix="/video")

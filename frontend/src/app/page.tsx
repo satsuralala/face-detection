@@ -259,6 +259,31 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Live Video Streaming Section */}
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg p-8 mb-8 text-white">
+          <h3 className="text-2xl font-semibold mb-4">Live Video Streaming</h3>
+          <p className="text-blue-100 mb-6">
+            Connect and view live video streams from mobile devices in real-time
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button 
+              onClick={() => router.push("/live-streams")}
+              className="bg-white text-blue-600 hover:bg-blue-50 font-medium py-3"
+            >
+              <Video className="h-5 w-5 mr-2" />
+              View Live Streams
+            </Button>
+            <Button 
+              onClick={() => router.push("/stream")}
+              variant="outline"
+              className="border-white text-white hover:bg-white hover:text-blue-600 font-medium py-3"
+            >
+              <Video className="h-5 w-5 mr-2" />
+              Start Streaming (Mobile)
+            </Button>
+          </div>
+        </div>
+
         <div className="bg-card rounded-xl border border-border shadow-sm p-8">
           <h3 className="text-2xl font-semibold mb-6 text-card-foreground">
             Сүүлийн үйл ажиллагаа

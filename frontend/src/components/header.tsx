@@ -1,7 +1,8 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield, User } from "lucide-react";
+import { LogOut, Shield, User, Video, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Header() {
   const router = useRouter();
@@ -24,6 +25,22 @@ export default function Header() {
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* Navigation Links */}
+            <nav className="hidden md:flex items-center space-x-4">
+              <Link href="/live-streams">
+                <Button variant="ghost" size="sm" className="text-foreground hover:text-primary">
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Streams
+                </Button>
+              </Link>
+              <Link href="/stream">
+                <Button variant="ghost" size="sm" className="text-foreground hover:text-primary">
+                  <Video className="h-4 w-4 mr-2" />
+                  Start Stream
+                </Button>
+              </Link>
+            </nav>
+            
             <div className="text-sm text-muted-foreground flex items-center">
               <User className="h-4 w-4 mr-1" />
               12345678
