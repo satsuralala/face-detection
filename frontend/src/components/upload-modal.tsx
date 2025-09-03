@@ -70,13 +70,13 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
         img: base64Image,
       };
 
-      const { status } = await axios.post(`${API_URL}/person`, payload, {
+      const { status, data } = await axios.post(`${API_URL}/person`, payload, {
         headers: { "Content-Type": "application/json" },
       });
 
       if (status === 200) {
         toast("Амжилттай нэмлээ!");
-        router.push("/search");
+        router.push(`/search/${data.person._id}`);
       }
     } catch (error) {
       console.error(error);

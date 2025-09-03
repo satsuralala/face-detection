@@ -1,7 +1,10 @@
 from beanie import Document
+from bson import ObjectId
+from typing import Optional
 
 
 class Person(Document):
+    _id: Optional[ObjectId] = None
     img: str
     name: str
     age: str

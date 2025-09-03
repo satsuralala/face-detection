@@ -1,7 +1,10 @@
 from pydantic import BaseModel
+from bson import ObjectId
+from typing import Optional
 
 
 class PersonCreate(BaseModel):
+    _id: Optional[ObjectId] = None
     img: str
     name: str
     age: str
