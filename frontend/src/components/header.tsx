@@ -10,7 +10,7 @@ export default function Header() {
     router.push("/auth/signin");
   };
   return (
-    <header className="bg-card border-b border-border shadow-sm">
+    <header className="bg-card border-b  shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-3">
@@ -20,7 +20,7 @@ export default function Header() {
             >
               <Shield color="white" className="h-7 w-7 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">FindHope</h1>
+            <h1 className="text-2xl font-bold text-foreground">Hope</h1>
           </div>
 
           <div className="flex items-center space-x-4">

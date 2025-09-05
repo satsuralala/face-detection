@@ -86,13 +86,12 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
           <div className="flex flex-col justify-center">
             <div className="text-center lg:text-left">
               <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent mb-6 text-balance leading-tight">
-                FindHope
+                Hope
               </h1>
               <p className="text-xl text-muted-foreground mb-6 text-pretty leading-relaxed">
                 Хиймэл оюун ухаанаар алга болсон хүмүүсийг илрүүлэх платформ

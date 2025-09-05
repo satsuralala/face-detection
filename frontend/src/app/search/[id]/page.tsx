@@ -3,17 +3,15 @@ import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import Header from "@/src/components/header";
+
 import {
   Camera,
   XCircle,
   Video,
-  User,
   Calendar,
   MapPin,
   Phone,
   ArrowLeft,
-  Copy,
 } from "lucide-react";
 
 interface PersonPayload {
@@ -27,6 +25,11 @@ interface PersonPayload {
   add_info: string;
   img: string;
 }
+interface FoundedPayload {
+  matched?: boolean;
+  similaarity?: number;
+  name?: string;
+}
 
 export default function SearchDetailPage() {
   const params = useParams<{ id: string }>();
@@ -34,27 +37,19 @@ export default function SearchDetailPage() {
   const [person, setPerson] = useState<PersonPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  const personId = person?.id || person?._id;
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      alert("Хууллаа");
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const id = params?.id;
+  const wsUrl = API_URL.replace(/^http/, "ws") + `/ws/${id}`;
+  const [founded, setFounded] = useState<FoundedPayload | null>(null);
 
   useEffect(() => {
-    const id = params?.id;
     if (!id) return;
     const fetchPerson = async () => {
       try {
-        const API_URL =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
         const { data } = await axios.get(`${API_URL}/person/${id}`);
         setPerson(data as PersonPayload);
       } catch (err) {
@@ -72,16 +67,62 @@ export default function SearchDetailPage() {
         video: { width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false,
       });
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         setIsCameraActive(true);
       }
+
+      if (!id) return;
+
+      const ws = new WebSocket(wsUrl);
+      setWsConnection(ws);
+
+      ws.onopen = () => console.log("WebSocket connected");
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.error) {
+            console.error("WebSocket error:", data.error);
+            return;
+          }
+          if (data.matched) {
+            setFounded(data);
+            console.log(
+              `✅ MATCH FOUND: ${data.name} (${data.similarity.toFixed(2)})`
+            );
+          }
+        } catch (err) {
+          console.error("Error parsing WebSocket message:", err);
+        }
+      };
+      ws.onclose = (event) => {
+        console.log("WebSocket disconnected", event.code, event.reason);
+        if (event.code !== 1000) {
+          console.log("Unexpected disconnection, attempting reconnect...");
+        }
+      };
+      ws.onerror = (err) => console.log("WebSocket error:", err);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 640;
+      canvas.height = 480;
+      const ctx = canvas.getContext("2d");
+
+      intervalRef.current = setInterval(() => {
+        if (!videoRef.current || ws.readyState !== WebSocket.OPEN) return;
+
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg");
+        ws.send(JSON.stringify({ frame: dataUrl }));
+      }, 500);
     } catch (err) {
       console.error("Camera error", err);
       alert("Камерад хандах боломжгүй байна");
     }
   };
+
   useEffect(() => {
     if (isCameraActive && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
@@ -90,13 +131,40 @@ export default function SearchDetailPage() {
   }, [isCameraActive]);
 
   const stopCamera = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    if (wsConnection) {
+      if (wsConnection.readyState === WebSocket.OPEN) {
+        wsConnection.close(1000, "User stopped camera");
+      }
+      setWsConnection(null);
+    }
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
+
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
   };
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (wsConnection) {
+        wsConnection.close(1000, "Component unmounted");
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -172,7 +240,7 @@ export default function SearchDetailPage() {
 
           <div className="space-y-4 lg:col-span-1">
             <h2 className="text-2xl font-bold text-foreground">
-              Хүний мэдээлэл
+              Алга болсон хүний мэдээлэл
             </h2>
 
             <div className="bg-card rounded-xl border border-border p-6">
@@ -257,6 +325,11 @@ export default function SearchDetailPage() {
                       <div className="text-sm leading-relaxed whitespace-pre-line">
                         {person.add_info}
                       </div>
+                    </div>
+                  )}
+                  {founded?.matched && (
+                    <div>
+                      <div></div>
                     </div>
                   )}
                 </div>
