@@ -100,6 +100,11 @@ export default function SearchDetailPage() {
               )}), bbox:${data}`
             );
           }
+          console.log(
+            `✅ MATCH FOUND: ${data.name} (${data.similarity.toFixed(
+              2
+            )}), bbox:${data}`
+          );
         } catch (err) {
           console.error("Error parsing WebSocket message:", err);
         }
@@ -121,13 +126,13 @@ export default function SearchDetailPage() {
         return;
       }
 
-      // intervalRef.current = setInterval(() => {
-      //   if (!videoRef.current || ws.readyState !== WebSocket.OPEN) return;
+      intervalRef.current = setInterval(() => {
+        if (!videoRef.current || ws.readyState !== WebSocket.OPEN) return;
 
-      //   context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      //   const dataUrl = canvas.toDataURL("image/jpeg");
-      //   ws.send(JSON.stringify({ frame: dataUrl }));
-      // }, 500);
+        context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg");
+        ws.send(JSON.stringify({ frame: dataUrl }));
+      }, 500);
     } catch (err) {
       console.error("Camera error", err);
       alert("Камерад хандах боломжгүй байна");
