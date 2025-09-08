@@ -15,30 +15,6 @@ router = APIRouter()
 arcface = ArcFaceModel(ctx_id=0)
 
 
-@router.post("/person")
-async def add_person(person: PersonCreate):
-    try:
-        img_data = base64.b64decode(person.img.split(",")[-1])
-        np_arr = np.frombuffer(img_data, np.uint8)
-        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        if img is None:
-            raise ValueError("Decoded image is None")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid image data: {e}")
-
-    embedding = arcface.get_embedding_from_frame(img)
-    if embedding is None:
-        raise HTTPException(
-            status_code=400, detail="No face detected in image")
-
-    embedding_list = embedding.tolist()
-
-    new_person_data = person.dict()
-    new_person_data["embedding"] = embedding_list
-    new_person = Person(**new_person_data)
-    await new_person.insert()
-
-    return {"status": "success", "person": new_person}
 
 
 @router.get("/person/{id}")
