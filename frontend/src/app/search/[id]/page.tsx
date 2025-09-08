@@ -12,6 +12,8 @@ import {
   MapPin,
   Phone,
   ArrowLeft,
+  CheckCircle2,
+  MessageCircleWarning,
 } from "lucide-react";
 
 interface PersonPayload {
@@ -27,8 +29,9 @@ interface PersonPayload {
 }
 interface FoundedPayload {
   matched?: boolean;
-  similaarity?: number;
+  similarity?: number;
   name?: string;
+  bbox?: [number, number, number, number];
 }
 
 export default function SearchDetailPage() {
@@ -45,6 +48,7 @@ export default function SearchDetailPage() {
   const id = params?.id;
   const wsUrl = API_URL.replace(/^http/, "ws") + `/ws/${id}`;
   const [founded, setFounded] = useState<FoundedPayload | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -59,7 +63,7 @@ export default function SearchDetailPage() {
       }
     };
     fetchPerson();
-  }, [params]);
+  }, [id, API_URL]);
 
   const startCamera = async () => {
     try {
@@ -83,6 +87,7 @@ export default function SearchDetailPage() {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log(data, "data");
           if (data.error) {
             console.error("WebSocket error:", data.error);
             return;
@@ -90,7 +95,9 @@ export default function SearchDetailPage() {
           if (data.matched) {
             setFounded(data);
             console.log(
-              `✅ MATCH FOUND: ${data.name} (${data.similarity.toFixed(2)})`
+              `✅ MATCH FOUND: ${data.name} (${data.similarity.toFixed(
+                2
+              )}), bbox:${data}`
             );
           }
         } catch (err) {
@@ -108,15 +115,19 @@ export default function SearchDetailPage() {
       const canvas = document.createElement("canvas");
       canvas.width = 640;
       canvas.height = 480;
-      const ctx = canvas.getContext("2d");
+      const context = canvas.getContext("2d");
+      if (!context) {
+        console.error("Canvas 2D context is not available");
+        return;
+      }
 
-      intervalRef.current = setInterval(() => {
-        if (!videoRef.current || ws.readyState !== WebSocket.OPEN) return;
+      // intervalRef.current = setInterval(() => {
+      //   if (!videoRef.current || ws.readyState !== WebSocket.OPEN) return;
 
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL("image/jpeg");
-        ws.send(JSON.stringify({ frame: dataUrl }));
-      }, 500);
+      //   context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      //   const dataUrl = canvas.toDataURL("image/jpeg");
+      //   ws.send(JSON.stringify({ frame: dataUrl }));
+      // }, 500);
     } catch (err) {
       console.error("Camera error", err);
       alert("Камерад хандах боломжгүй байна");
@@ -150,6 +161,7 @@ export default function SearchDetailPage() {
 
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
+    setFounded(null);
   };
 
   useEffect(() => {
@@ -201,6 +213,7 @@ export default function SearchDetailPage() {
                   muted
                   className="w-full h-full object-cover"
                 />
+                <canvas ref={canvasRef} />
 
                 {!isCameraActive && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/80">
@@ -327,9 +340,58 @@ export default function SearchDetailPage() {
                       </div>
                     </div>
                   )}
-                  {founded?.matched && (
-                    <div>
-                      <div></div>
+                  {founded?.matched ? (
+                    <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-semibold text-green-800">
+                                Хайж буй хүн олдсон
+                              </div>
+                              <div className="text-xs text-green-700 mt-0.5 truncate">
+                                {founded?.name || person.name} {founded?.bbox}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-3">
+                            <div className="w-full h-2 rounded-full bg-white/70">
+                              <div
+                                className="h-2 rounded-full bg-green-600"
+                                style={{
+                                  width: `${Math.round(
+                                    (founded?.similarity ?? 0) * 100
+                                  )}%`,
+                                }}
+                              />
+                            </div>
+                            <div className="mt-2 text-xs text-green-800">
+                              Ижил төстэй байдал{" "}
+                              {Math.round((founded?.similarity ?? 0) * 100)}%
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <MessageCircleWarning className="h-5 w-5 text-red-600 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-semibold ">
+                                Хайж буй хүн одоогоор олдоогүй байна
+                              </div>
+                              <div className="text-xs  mt-0.5 truncate">
+                                {founded?.name || person.name}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
