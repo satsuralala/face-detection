@@ -17,7 +17,11 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def on_startup():
-    await connect_to_mongo()
+    try:
+        await connect_to_mongo()
+    except Exception as e:
+        print(f"⚠️ MongoDB connection failed: {e}")
+        print("📝 Running in demo mode with mock data")
 
 
 app.include_router(info_router, prefix="/api")

@@ -5,6 +5,7 @@ import { Video, Search, Users, Clock, AlertTriangle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "../components/header";
 import UploadModal from "../components/upload-modal";
+import { fetchAllPersons, Person } from "@/lib/api";
 
 interface UserInfo {
   userId: string | null;
@@ -12,42 +13,44 @@ interface UserInfo {
   loginTime: string | null;
 }
 
-const mockUploadedPersons = [
-  {
-    id: 1,
-    name: "Батбаяр",
-    age: 25,
-    lastSeen: "2024-01-15",
-    location: "Улаанбаатар хот",
-    image: "/mongolian-man-portrait.png",
-    status: "Хайж байна",
-  },
-  {
-    id: 2,
-    name: "Сарангэрэл",
-    age: 32,
-    lastSeen: "2024-01-10",
-    location: "Дархан хот",
-    image: "/mongolian-woman-portrait.png",
-    status: "Хайж байна",
-  },
-  {
-    id: 3,
-    name: "Төмөрбаатар",
-    age: 45,
-    lastSeen: "2024-01-08",
-    location: "Эрдэнэт хот",
-    image: "/mongolian-middle-aged-man-portrait.png",
-    status: "Олдсон",
-  },
-];
+// Helper function to map API person data to display format
+const mapPersonToDisplay = (person: Person) => ({
+  id: person._id,
+  name: person.name,
+  age: parseInt(person.age) || 0,
+  lastSeen: person.last_seen_data,
+  location: person.last_seen_location,
+  image: person.img,
+  status: "Хайж байна", // Default status, could be enhanced later
+  phone: person.phone_number,
+  additionalInfo: person.add_info,
+});
 
 export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [persons, setPersons] = useState<ReturnType<typeof mapPersonToDisplay>[]>([]);
+  const [personsLoading, setPersonsLoading] = useState(false);
+  const [personsError, setPersonsError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Function to load persons from API
+  const loadPersons = async () => {
+    setPersonsLoading(true);
+    setPersonsError(null);
+    try {
+      const apiPersons = await fetchAllPersons();
+      const mappedPersons = apiPersons.map(mapPersonToDisplay);
+      setPersons(mappedPersons);
+    } catch (error) {
+      console.error('Failed to load persons:', error);
+      setPersonsError('Хүмүүсийн мэдээллийг ачаалахад алдаа гарлаа');
+    } finally {
+      setPersonsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated");
@@ -59,6 +62,9 @@ export default function HomePage() {
 
     setIsAuthenticated(true);
     setIsLoading(false);
+    
+    // Load persons data after authentication
+    loadPersons();
   }, [router]);
 
   const handleFindLostPerson = () => {
@@ -67,6 +73,12 @@ export default function HomePage() {
 
   const handleAddNewPerson = () => {
     setIsUploadModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsUploadModalOpen(false);
+    // Refresh persons list when modal closes (in case a new person was added)
+    loadPersons();
   };
 
   if (isLoading) {
@@ -153,7 +165,7 @@ export default function HomePage() {
             </h3>
             <div className="flex items-center space-x-3">
               <div className="text-sm text-muted-foreground bg-green-50 px-3 py-1 rounded-full border border-green-200">
-                Нийт: {mockUploadedPersons.length} хүн
+                Нийт: {persons.length} хүн
               </div>
               <Button
                 onClick={handleAddNewPerson}
@@ -166,81 +178,125 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockUploadedPersons.map((person) => (
-              <div
-                key={person.id}
-                className="p-6 bg-background rounded-lg border border-border hover:shadow-md hover:border-green-200 transition-all duration-300"
+          {personsError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{personsError}</p>
+              <Button 
+                onClick={loadPersons} 
+                size="sm" 
+                className="mt-2 bg-red-600 hover:bg-red-700"
               >
-                <div className="flex items-start space-x-4">
-                  <img
-                    src={person.image || "/placeholder.svg"}
-                    alt={person.name}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-green-200"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-lg font-semibold text-foreground mb-1">
-                      {person.name}
-                    </h4>
-                    <p className="text-sm text-muted-foreground mb-1">
-                      Нас: {person.age}
-                    </p>
-                    <p className="text-sm text-muted-foreground mb-1">
-                      Сүүлд харагдсан: {person.lastSeen}
-                    </p>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {person.location}
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          person.status === "Олдсон"
-                            ? "bg-green-500"
-                            : "bg-amber-500"
-                        }`}
-                      ></div>
-                      <span
-                        className={`text-xs font-medium ${
-                          person.status === "Олдсон"
-                            ? "text-green-600"
-                            : "text-amber-600"
-                        }`}
-                      >
-                        {person.status}
-                      </span>
+                Дахин оролдох
+              </Button>
+            </div>
+          )}
+
+          {personsLoading ? (
+            <div className="text-center py-12">
+              <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Хүмүүсийн мэдээллийг ачаалж байна...</p>
+            </div>
+          ) : persons.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-lg text-muted-foreground mb-2">
+                Одоогоор хүн бүртгэгдээгүй байна
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Эхний хүнийг бүртгэхийн тулд "Шинэ хүн" товчийг дарна уу
+              </p>
+              <Button
+                onClick={handleAddNewPerson}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Анхны хүнийг нэмэх
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {persons.map((person) => (
+                <div
+                  key={person.id}
+                  className="p-6 bg-background rounded-lg border border-border hover:shadow-md hover:border-green-200 transition-all duration-300"
+                >
+                  <div className="flex items-start space-x-4">
+                    <img
+                      src={person.image || "/placeholder.svg"}
+                      alt={person.name}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-green-200"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-lg font-semibold text-foreground mb-1">
+                        {person.name}
+                      </h4>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        Нас: {person.age}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        Сүүлд харагдсан: {person.lastSeen}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {person.location}
+                      </p>
+                      {person.phone && (
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Утас: {person.phone}
+                        </p>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            person.status === "Олдсон"
+                              ? "bg-green-500"
+                              : "bg-amber-500"
+                          }`}
+                        ></div>
+                        <span
+                          className={`text-xs font-medium ${
+                            person.status === "Олдсон"
+                              ? "text-green-600"
+                              : "text-amber-600"
+                          }`}
+                        >
+                          {person.status}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
           <div className="p-6 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-3">
               <Search className="h-8 w-8 text-green-600" />
-              <div className="text-3xl font-bold text-green-600">0</div>
+              <div className="text-3xl font-bold text-green-600">{persons.length}</div>
             </div>
             <div className="text-sm text-muted-foreground font-medium">
-              Нийт хайлт
+              Нийт хүн
             </div>
           </div>
 
           <div className="p-6 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-3">
               <Clock className="h-8 w-8 text-amber-600" />
-              <div className="text-3xl font-bold text-amber-600">0</div>
+              <div className="text-3xl font-bold text-amber-600">{persons.filter(p => p.status === "Хайж байна").length}</div>
             </div>
             <div className="text-sm text-muted-foreground font-medium">
-              Идэвхтэй хайлт
+              Хайж байгаа
             </div>
           </div>
 
           <div className="p-6 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-3">
               <Users className="h-8 w-8 text-green-600" />
-              <div className="text-3xl font-bold text-green-600">0</div>
+              <div className="text-3xl font-bold text-green-600">{persons.filter(p => p.status === "Олдсон").length}</div>
             </div>
             <div className="text-sm text-muted-foreground font-medium">
               Олдсон хүмүүс
@@ -277,7 +333,7 @@ export default function HomePage() {
       </main>
       <UploadModal
         isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
+        onClose={handleModalClose}
       />
     </div>
   );
