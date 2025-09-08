@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 
 export interface Person {
   _id: string;
@@ -23,7 +23,7 @@ export interface ApiResponse<T> {
 // Get all persons from the API
 export const fetchAllPersons = async (): Promise<Person[]> => {
   try {
-    const response = await axios.get<ApiResponse<Person>>(`${API_URL}/people`);
+    const response = await axios.get<ApiResponse<Person>>(`${API_URL}/list_persons`);
     return response.data.persons || [];
   } catch (error) {
     console.error('Error fetching persons:', error);

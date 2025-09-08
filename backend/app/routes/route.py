@@ -137,7 +137,7 @@ async def start_detection(websocket: WebSocket, id: str):
             pass
 
 
-@router.get("/people")
+@router.get("/list_persons")
 async def list_persons():
     try:
         persons = await Person.find_all().to_list()
