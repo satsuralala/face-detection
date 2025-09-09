@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Camera,
   XCircle,
-  Video,
   Calendar,
   MapPin,
   Phone,
@@ -100,11 +99,7 @@ export default function SearchDetailPage() {
               )}), bbox:${data}`
             );
           }
-          console.log(
-            `✅ MATCH FOUND: ${data.name} (${data.similarity.toFixed(
-              2
-            )}), bbox:${data}`
-          );
+          console.log(data, "datassssssssss");
         } catch (err) {
           console.error("Error parsing WebSocket message:", err);
         }
@@ -183,6 +178,75 @@ export default function SearchDetailPage() {
     };
   }, []);
 
+  const drawBoundingBox = (bbox: [number, number, number, number]) => {
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+
+    if (!canvas || !video) return;
+
+    // Set canvas size to match video
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Clear previous drawings
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Calculate scale factors
+    const scaleX = canvas.width / 640;
+    const scaleY = canvas.height / 480;
+
+    // Scale bbox coordinates
+    const [x1, y1, x2, y2] = bbox;
+    const scaledX1 = x1 * scaleX;
+    const scaledY1 = y1 * scaleY;
+    const scaledX2 = x2 * scaleX;
+    const scaledY2 = y2 * scaleY;
+
+    // Draw bounding box
+    ctx.strokeStyle = "#22c55e"; // Green color
+    ctx.lineWidth = 3;
+    ctx.strokeRect(
+      scaledX1,
+      scaledY1,
+      scaledX2 - scaledX1,
+      scaledY2 - scaledY1
+    );
+
+    // Add label background
+    const labelText = `${founded?.name || "Match"} (${Math.round(
+      (founded?.similarity || 0) * 100
+    )}%)`;
+    ctx.font = "14px sans-serif";
+    const textMetrics = ctx.measureText(labelText);
+    const labelWidth = textMetrics.width + 16;
+    const labelHeight = 24;
+
+    // Draw label background
+    ctx.fillStyle = "#22c55e";
+    ctx.fillRect(scaledX1, scaledY1 - labelHeight, labelWidth, labelHeight);
+
+    // Draw label text
+    ctx.fillStyle = "white";
+    ctx.fillText(labelText, scaledX1 + 8, scaledY1 - 6);
+  };
+
+  useEffect(() => {
+    if (founded?.matched && founded?.bbox) {
+      drawBoundingBox(founded.bbox);
+    } else if (canvasRef.current) {
+      // Clear canvas when no match
+      const ctx = canvasRef.current.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
+    }
+  }, [founded]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -218,19 +282,11 @@ export default function SearchDetailPage() {
                   muted
                   className="w-full h-full object-cover"
                 />
-                <canvas ref={canvasRef} />
-
-                {!isCameraActive && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/80">
-                    <Video className="h-16 w-16 text-muted-foreground mb-4" />
-                    <p className="text-lg font-medium text-muted-foreground mb-2">
-                      Камера идэвхгүй
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Камераа идэвхжүүлнэ үү
-                    </p>
-                  </div>
-                )}
+                <canvas
+                  ref={canvasRef}
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  style={{ zIndex: 10 }}
+                />
               </div>
             </div>
             <div className="flex items-center justify-between">
@@ -248,7 +304,7 @@ export default function SearchDetailPage() {
                 <Button
                   onClick={stopCamera}
                   variant="outline"
-                  className="text-red-600 border-red-300 hover:bg-red-50"
+                  className="text-red-600 border-red-300 hover:bg-red-50 bg-transparent"
                 >
                   <XCircle className="h-4 w-4 mr-2" /> Камера зогсоох
                 </Button>
@@ -267,7 +323,7 @@ export default function SearchDetailPage() {
                   <div className="flex items-start gap-4">
                     {person.img && (
                       <img
-                        src={person.img}
+                        src={person.img || "/placeholder.svg"}
                         alt={person.name}
                         className="w-20 h-20 rounded-xl object-cover border border-border"
                       />
