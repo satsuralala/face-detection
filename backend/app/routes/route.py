@@ -202,17 +202,19 @@ async def start_detection(websocket: WebSocket, id: str):
                 continue
 
             try:
-                face_embedding = arcface.get_embedding_from_frame(img)
+                face_embedding, bbox = arcface.get_embedding_and_bbox_from_frame(img)
                 if face_embedding is not None:
                     sim = cosine_similarity(embedding_array, face_embedding)
                     matched = sim > 0.4
                     await websocket.send_json({
                         "matched": bool(matched),
                         "similarity": float(sim),
-                        "name": person.name if bool(matched) else None
+                        "name": person.name if bool(matched) else None,
+                        "bbox": bbox if bbox is not None else None,
+                        "confidence_percentage": round(sim * 100, 1)
                     })
                 else:
-                    await websocket.send_json({"matched": False})
+                    await websocket.send_json({"matched": False, "bbox": None})
             except Exception as e:
                 try:
                     await websocket.send_json({"error": f"processing error: {e}"})
