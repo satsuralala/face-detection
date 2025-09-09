@@ -332,9 +332,6 @@ export default function HomePage() {
             <p className="text-lg text-muted-foreground mb-2">
               Одоогоор үйл ажиллагаа байхгүй байна
             </p>
-            <p className="text-sm text-muted-foreground">
-              Системийг ашиглаж эхлэхэд энд мэдээлэл харагдана
-            </p>
           </div>
         </div>
       </main>
