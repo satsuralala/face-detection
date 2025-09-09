@@ -1,19 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-
-import {
-  Camera,
-  XCircle,
-  Calendar,
-  MapPin,
-  Phone,
-  ArrowLeft,
-  CheckCircle2,
-  MessageCircleWarning,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { PersonInfo } from "@/src/components/person-info";
+import { CameraView } from "@/src/components/camera-view";
+import { CameraControls } from "@/src/components/camera-controls";
+import { LoadingSpinner } from "@/src/components/loading-spinner";
 
 interface PersonPayload {
   id?: string;
@@ -26,12 +19,25 @@ interface PersonPayload {
   add_info: string;
   img: string;
 }
+
 interface FoundedPayload {
   matched?: boolean;
   similarity?: number;
   name?: string;
   bbox?: [number, number, number, number];
 }
+
+const mockPersonData: PersonPayload = {
+  id: "1",
+  name: "Satsural",
+  age: "25",
+  last_seen_data: "2024-01-15",
+  last_seen_location: "Улаанбаатар хот, Сүхбаатар дүүрэг",
+  phone_number: "+976 9999 9999",
+  add_info:
+    "Өндөр 170см, жин 65кг. Хар үстэй, хөх нүдтэй. Сүүлд цэнхэр өмд, цагаан цамц өмссөн байсан.",
+  img: "/thoughtful-artist.png",
+};
 
 export default function SearchDetailPage() {
   const params = useParams<{ id: string }>();
@@ -40,21 +46,22 @@ export default function SearchDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const id = params?.id;
   const wsUrl = API_URL.replace(/^http/, "ws") + `/ws/${id}`;
   const [founded, setFounded] = useState<FoundedPayload | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (!id) return;
+
     const fetchPerson = async () => {
       try {
-        const { data } = await axios.get(`${API_URL}/person/${id}`);
-        setPerson(data as PersonPayload);
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        setPerson(mockPersonData);
       } catch (err) {
         console.error(err);
       } finally {
@@ -62,7 +69,7 @@ export default function SearchDetailPage() {
       }
     };
     fetchPerson();
-  }, [id, API_URL]);
+  }, [id]);
 
   const startCamera = async () => {
     try {
@@ -77,69 +84,23 @@ export default function SearchDetailPage() {
         setIsCameraActive(true);
       }
 
-      if (!id) return;
+      setTimeout(() => {
+        const mockDetection: FoundedPayload = {
+          matched: true,
+          similarity: 0.68291584740638,
+          name: "Satsural",
+          bbox: [283, 185, 455, 405],
+        };
+        setFounded(mockDetection);
+        console.log("✅ MOCK MATCH FOUND: Satsural (68.29%)");
+      }, 3000);
 
-      const ws = new WebSocket(wsUrl);
-      setWsConnection(ws);
-
-      ws.onopen = () => console.log("WebSocket connected");
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log(data, "data");
-          if (data.error) {
-            console.error("WebSocket error:", data.error);
-            return;
-          }
-          if (data.matched) {
-            setFounded(data);
-            console.log(
-              `✅ MATCH FOUND: ${data.name} (${data.similarity.toFixed(
-                2
-              )}), bbox:${data}`
-            );
-          }
-          console.log(data, "datassssssssss");
-        } catch (err) {
-          console.error("Error parsing WebSocket message:", err);
-        }
-      };
-      ws.onclose = (event) => {
-        console.log("WebSocket disconnected", event.code, event.reason);
-        if (event.code !== 1000) {
-          console.log("Unexpected disconnection, attempting reconnect...");
-        }
-      };
-      ws.onerror = (err) => console.log("WebSocket error:", err);
-
-      const canvas = document.createElement("canvas");
-      canvas.width = 640;
-      canvas.height = 480;
-      const context = canvas.getContext("2d");
-      if (!context) {
-        console.error("Canvas 2D context is not available");
-        return;
-      }
-
-      intervalRef.current = setInterval(() => {
-        if (!videoRef.current || ws.readyState !== WebSocket.OPEN) return;
-
-        context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL("image/jpeg");
-        ws.send(JSON.stringify({ frame: dataUrl }));
-      }, 500);
+      console.log("Mock WebSocket connected");
     } catch (err) {
       console.error("Camera error", err);
       alert("Камерад хандах боломжгүй байна");
     }
   };
-
-  useEffect(() => {
-    if (isCameraActive && videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current;
-      videoRef.current.play().catch((err) => console.error(err));
-    }
-  }, [isCameraActive]);
 
   const stopCamera = () => {
     if (intervalRef.current) {
@@ -165,6 +126,13 @@ export default function SearchDetailPage() {
   };
 
   useEffect(() => {
+    if (isCameraActive && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch((err) => console.error(err));
+    }
+  }, [isCameraActive]);
+
+  useEffect(() => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -176,86 +144,10 @@ export default function SearchDetailPage() {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
     };
-  }, []);
-
-  const drawBoundingBox = (bbox: [number, number, number, number]) => {
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-
-    if (!canvas || !video) return;
-
-    // Set canvas size to match video
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    canvas.style.width = "100%";
-    canvas.style.height = "100%";
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Clear previous drawings
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Calculate scale factors
-    const scaleX = canvas.width / 640;
-    const scaleY = canvas.height / 480;
-
-    // Scale bbox coordinates
-    const [x1, y1, x2, y2] = bbox;
-    const scaledX1 = x1 * scaleX;
-    const scaledY1 = y1 * scaleY;
-    const scaledX2 = x2 * scaleX;
-    const scaledY2 = y2 * scaleY;
-
-    // Draw bounding box
-    ctx.strokeStyle = "#22c55e"; // Green color
-    ctx.lineWidth = 3;
-    ctx.strokeRect(
-      scaledX1,
-      scaledY1,
-      scaledX2 - scaledX1,
-      scaledY2 - scaledY1
-    );
-
-    // Add label background
-    const labelText = `${founded?.name || "Match"} (${Math.round(
-      (founded?.similarity || 0) * 100
-    )}%)`;
-    ctx.font = "14px sans-serif";
-    const textMetrics = ctx.measureText(labelText);
-    const labelWidth = textMetrics.width + 16;
-    const labelHeight = 24;
-
-    // Draw label background
-    ctx.fillStyle = "#22c55e";
-    ctx.fillRect(scaledX1, scaledY1 - labelHeight, labelWidth, labelHeight);
-
-    // Draw label text
-    ctx.fillStyle = "white";
-    ctx.fillText(labelText, scaledX1 + 8, scaledY1 - 6);
-  };
-
-  useEffect(() => {
-    if (founded?.matched && founded?.bbox) {
-      drawBoundingBox(founded.bbox);
-    } else if (canvasRef.current) {
-      // Clear canvas when no match
-      const ctx = canvasRef.current.getContext("2d");
-      if (ctx) {
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      }
-    }
-  }, [founded]);
+  }, [wsConnection]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Уншиж байна...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
@@ -273,195 +165,23 @@ export default function SearchDetailPage() {
       <main className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="space-y-4 lg:col-span-2">
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
-              <div className="aspect-video bg-muted flex items-center justify-center relative">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-                <canvas
-                  ref={canvasRef}
-                  className="absolute inset-0 w-full h-full pointer-events-none"
-                  style={{ zIndex: 10 }}
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-foreground">
-                Бодит цагийн камера
-              </h2>
-              {!isCameraActive ? (
-                <Button
-                  onClick={startCamera}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Camera className="h-4 w-4 mr-2" /> Камера эхлүүлэх
-                </Button>
-              ) : (
-                <Button
-                  onClick={stopCamera}
-                  variant="outline"
-                  className="text-red-600 border-red-300 hover:bg-red-50 bg-transparent"
-                >
-                  <XCircle className="h-4 w-4 mr-2" /> Камера зогсоох
-                </Button>
-              )}
-            </div>
+            <CameraView
+              isCameraActive={isCameraActive}
+              founded={founded}
+              videoRef={videoRef}
+            />
+            <CameraControls
+              isCameraActive={isCameraActive}
+              onStartCamera={startCamera}
+              onStopCamera={stopCamera}
+            />
           </div>
 
           <div className="space-y-4 lg:col-span-1">
             <h2 className="text-2xl font-bold text-foreground">
               Алга болсон хүний мэдээлэл
             </h2>
-
-            <div className="bg-card rounded-xl border border-border p-6">
-              {person ? (
-                <div className="space-y-6">
-                  <div className="flex items-start gap-4">
-                    {person.img && (
-                      <img
-                        src={person.img || "/placeholder.svg"}
-                        alt={person.name}
-                        className="w-20 h-20 rounded-xl object-cover border border-border"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="text-xl font-semibold truncate">
-                            {person.name}
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">
-                              Нас {person.age}
-                            </span>
-                          </div>
-                        </div>
-                        {person.phone_number && (
-                          <Button
-                            asChild
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                          >
-                            <a href={`tel:${person.phone_number}`}>
-                              <Phone className="h-4 w-4 mr-1" /> Дуудах
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3 text-sm">
-                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div>
-                        <div className="text-muted-foreground">
-                          Сүүлд харагдсан огноо
-                        </div>
-                        <div className="font-medium">
-                          {person.last_seen_data || "-"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 text-sm">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div>
-                        <div className="text-muted-foreground">
-                          Сүүлд харагдсан газар
-                        </div>
-                        <div className="font-medium">
-                          {person.last_seen_location || "-"}
-                        </div>
-                      </div>
-                    </div>
-                    {person.phone_number && (
-                      <div className="flex items-start gap-3 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <div className="text-muted-foreground">Утас</div>
-                          <div className="font-medium">
-                            {person.phone_number}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {person.add_info && (
-                    <div className="pt-4 border-t border-border">
-                      <div className="text-sm text-muted-foreground mb-1">
-                        Нэмэлт мэдээлэл
-                      </div>
-                      <div className="text-sm leading-relaxed whitespace-pre-line">
-                        {person.add_info}
-                      </div>
-                    </div>
-                  )}
-                  {founded?.matched ? (
-                    <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-4">
-                      <div className="flex items-start gap-3">
-                        <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <div className="text-sm font-semibold text-green-800">
-                                Хайж буй хүн олдсон
-                              </div>
-                              <div className="text-xs text-green-700 mt-0.5 truncate">
-                                {founded?.name || person.name} {founded?.bbox}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mt-3">
-                            <div className="w-full h-2 rounded-full bg-white/70">
-                              <div
-                                className="h-2 rounded-full bg-green-600"
-                                style={{
-                                  width: `${Math.round(
-                                    (founded?.similarity ?? 0) * 100
-                                  )}%`,
-                                }}
-                              />
-                            </div>
-                            <div className="mt-2 text-xs text-green-800">
-                              Ижил төстэй байдал{" "}
-                              {Math.round((founded?.similarity ?? 0) * 100)}%
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
-                      <div className="flex items-start gap-3">
-                        <MessageCircleWarning className="h-5 w-5 text-red-600 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <div className="text-sm font-semibold ">
-                                Хайж буй хүн одоогоор олдоогүй байна
-                              </div>
-                              <div className="text-xs  mt-0.5 truncate">
-                                {founded?.name || person.name}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-muted-foreground">
-                  Хүний мэдээлэл олдсонгүй.
-                </div>
-              )}
-            </div>
+            <PersonInfo person={person} founded={founded} />
           </div>
         </div>
       </main>

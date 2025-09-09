@@ -15,6 +15,8 @@ import cv2
 router = APIRouter()
 
 arcface = ArcFaceModel(ctx_id=0)
+detector = MTCNN()
+active_connections = {}
 
 
 @router.post("/person")
@@ -59,8 +61,6 @@ async def get_person(id: str):
 active_connections: Dict[str, WebSocket] = {}
 
 
-# @router.websocket("/ws/{id}")
-# async def start_detection(websocket: WebSocket, id: str):
 #     await websocket.accept()
 
 #     try:
@@ -151,6 +151,50 @@ active_connections: Dict[str, WebSocket] = {}
 #             await websocket.close(code=1011)
 #         except Exception:
 #             pass
+
+
+@router.post("/person")
+async def add_person(person: PersonCreate):
+    try:
+        img_data = base64.b64decode(person.img.split(",")[-1])
+        np_arr = np.frombuffer(img_data, np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError("Decoded image is None")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image data: {e}")
+
+    embedding = arcface.get_embedding_from_frame(img)
+    if embedding is None:
+        raise HTTPException(
+            status_code=400, detail="No face detected in image")
+
+    embedding_list = embedding.tolist()
+
+    new_person_data = person.dict()
+    new_person_data["embedding"] = embedding_list
+    new_person = Person(**new_person_data)
+    await new_person.insert()
+
+    return {"status": "success", "person": new_person}
+
+
+@router.get("/person/{id}")
+async def get_person(id: str):
+    try:
+        object_id = ObjectId(id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid Person ID format")
+
+    item = await Person.find_one({"_id": object_id})
+    if item:
+        return item
+    else:
+        raise HTTPException(status_code=404, detail="Person not found")
+
+active_connections: Dict[str, WebSocket] = {}
+
+
 @router.websocket("/ws/{id}")
 async def start_detection(websocket: WebSocket, id: str):
     await websocket.accept()
@@ -202,17 +246,30 @@ async def start_detection(websocket: WebSocket, id: str):
                 continue
 
             try:
+                detector = MTCNN()
+                results = detector.detect_faces(img)
+                if not results:
+                    return None, None
+
+                x, y, w, h = results[0]['box']
+                bbox = [x, y, x+w, y+h]
+
+                bbox = [int(x), int(y), int(x+w), int(y+h)]
+
                 face_embedding = arcface.get_embedding_from_frame(img)
+
                 if face_embedding is not None:
                     sim = cosine_similarity(embedding_array, face_embedding)
                     matched = sim > 0.4
+
                     await websocket.send_json({
                         "matched": bool(matched),
+                        "bbox": bbox,
                         "similarity": float(sim),
                         "name": person.name if bool(matched) else None
                     })
                 else:
-                    await websocket.send_json({"matched": False})
+                    await websocket.send_json({"matched": False,  "bbox": bbox, })
             except Exception as e:
                 try:
                     await websocket.send_json({"error": f"processing error: {e}"})
@@ -229,6 +286,12 @@ async def start_detection(websocket: WebSocket, id: str):
             await websocket.close(code=1011)
         except Exception:
             pass
+
+
+@router.get("/people")
+async def list_persons():
+    persons = await Person.find_all().to_list()
+    return {"persons": persons}
 
 
 @router.get("/people")
