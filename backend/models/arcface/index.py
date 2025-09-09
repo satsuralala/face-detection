@@ -36,11 +36,11 @@ class ArcFaceModel:
                 face = faces[0]
                 # Extract bounding box coordinates
                 bbox = face.bbox.astype(int)  # [x1, y1, x2, y2]
-                # Convert to [x, y, width, height] format
+                # Convert to [x, y, width, height] format and ensure JSON serializable
                 x, y, x2, y2 = bbox
                 width = x2 - x
                 height = y2 - y
-                bbox_formatted = [x, y, width, height]
+                bbox_formatted = [int(x), int(y), int(width), int(height)]
                 
                 return face.embedding, bbox_formatted
             return None, None

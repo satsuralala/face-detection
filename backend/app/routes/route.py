@@ -206,13 +206,15 @@ async def start_detection(websocket: WebSocket, id: str):
                 if face_embedding is not None:
                     sim = cosine_similarity(embedding_array, face_embedding)
                     matched = sim > 0.4
-                    await websocket.send_json({
+                    # Ensure all values are JSON serializable
+                    response_data = {
                         "matched": bool(matched),
                         "similarity": float(sim),
                         "name": person.name if bool(matched) else None,
-                        "bbox": bbox if bbox is not None else None,
-                        "confidence_percentage": round(sim * 100, 1)
-                    })
+                        "bbox": [int(coord) for coord in bbox] if bbox is not None else None,
+                        "confidence_percentage": float(round(sim * 100, 1))
+                    }
+                    await websocket.send_json(response_data)
                 else:
                     await websocket.send_json({"matched": False, "bbox": None})
             except Exception as e:
