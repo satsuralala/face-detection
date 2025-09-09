@@ -25,7 +25,6 @@ class ArcFaceModel:
             return None
 
 
-# Test code (only runs when this file is run directly)
 if __name__ == "__main__":
     app = FaceAnalysis(
         providers=['CPUExecutionProvider', 'CPUExecutionProvider'])
