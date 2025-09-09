@@ -33,27 +33,22 @@ export function CameraView({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set canvas size to match video
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
 
-    // Clear previous drawings
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw bounding box
     const [x1, y1, x2, y2] = bbox;
     const width = x2 - x1;
     const height = y2 - y1;
 
-    ctx.strokeStyle = "#10b981"; // Green color
+    ctx.strokeStyle = "#10b981";
     ctx.lineWidth = 3;
     ctx.strokeRect(x1, y1, width, height);
 
-    // Add label background
     ctx.fillStyle = "#10b981";
     ctx.fillRect(x1, y1 - 25, width, 25);
 
-    // Add label text
     ctx.fillStyle = "white";
     ctx.font = "14px sans-serif";
     ctx.fillText(
@@ -69,7 +64,6 @@ export function CameraView({
     if (founded?.matched && founded.bbox) {
       drawBoundingBox(founded.bbox);
     } else if (canvasRef.current) {
-      // Clear canvas if no match
       const ctx = canvasRef.current.getContext("2d");
       if (ctx) {
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
