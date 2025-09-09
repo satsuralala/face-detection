@@ -24,6 +24,30 @@ class ArcFaceModel:
             print(f"Error extracting embedding: {e}")
             return None
 
+    def get_embedding_and_bbox_from_frame(self, frame):
+        """
+        Extract facial embedding and bounding box from a frame/image
+        Returns: tuple (embedding, bbox) or (None, None) if no face detected
+        bbox format: [x, y, width, height]
+        """
+        try:
+            faces = self.app.get(frame)
+            if len(faces) > 0:
+                face = faces[0]
+                # Extract bounding box coordinates
+                bbox = face.bbox.astype(int)  # [x1, y1, x2, y2]
+                # Convert to [x, y, width, height] format and ensure JSON serializable
+                x, y, x2, y2 = bbox
+                width = x2 - x
+                height = y2 - y
+                bbox_formatted = [int(x), int(y), int(width), int(height)]
+                
+                return face.embedding, bbox_formatted
+            return None, None
+        except Exception as e:
+            print(f"Error extracting embedding and bbox: {e}")
+            return None, None
+
 
 if __name__ == "__main__":
     app = FaceAnalysis(

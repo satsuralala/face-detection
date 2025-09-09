@@ -32,6 +32,7 @@ interface FoundedPayload {
   similarity?: number;
   name?: string;
   bbox?: [number, number, number, number];
+  confidence_percentage?: number;
 }
 
 export default function SearchDetailPage() {
@@ -49,6 +50,65 @@ export default function SearchDetailPage() {
   const wsUrl = API_URL.replace(/^http/, "ws") + `/ws/${id}`;
   const [founded, setFounded] = useState<FoundedPayload | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  const drawBoundingBox = (
+    canvas: HTMLCanvasElement,
+    bbox: [number, number, number, number] | null,
+    name: string | null,
+    confidence: number | null,
+    matched: boolean
+  ) => {
+    const ctx = canvas.getContext("2d");
+    if (!ctx || !bbox) return;
+
+    // Clear previous drawings
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const [x, y, width, height] = bbox;
+    
+    // Scale bbox coordinates to canvas size
+    const scaleX = canvas.width / 640; // Assuming original frame is 640px wide
+    const scaleY = canvas.height / 480; // Assuming original frame is 480px high
+    
+    const scaledX = x * scaleX;
+    const scaledY = y * scaleY;
+    const scaledWidth = width * scaleX;
+    const scaledHeight = height * scaleY;
+
+    // Set drawing styles based on match status
+    if (matched) {
+      ctx.strokeStyle = "#22c55e"; // Green for match
+      ctx.fillStyle = "rgba(34, 197, 94, 0.2)";
+    } else {
+      ctx.strokeStyle = "#ef4444"; // Red for no match
+      ctx.fillStyle = "rgba(239, 68, 68, 0.2)";
+    }
+    
+    ctx.lineWidth = 3;
+
+    // Draw bounding box
+    ctx.strokeRect(scaledX, scaledY, scaledWidth, scaledHeight);
+    ctx.fillRect(scaledX, scaledY, scaledWidth, scaledHeight);
+
+    // Draw label background
+    const labelText = matched && name ? `${name} (${confidence?.toFixed(1)}%)` : "No match";
+    ctx.font = "16px Arial";
+    const textMetrics = ctx.measureText(labelText);
+    const labelWidth = textMetrics.width + 20;
+    const labelHeight = 30;
+
+    // Position label above the box, or below if not enough space
+    const labelY = scaledY > labelHeight ? scaledY - 5 : scaledY + scaledHeight + labelHeight;
+
+    ctx.fillStyle = matched ? "#22c55e" : "#ef4444";
+    ctx.fillRect(scaledX, labelY - labelHeight, labelWidth, labelHeight);
+
+    // Draw label text
+    ctx.fillStyle = "white";
+    ctx.font = "bold 16px Arial";
+    ctx.fillText(labelText, scaledX + 10, labelY - 8);
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -92,19 +152,28 @@ export default function SearchDetailPage() {
             console.error("WebSocket error:", data.error);
             return;
           }
-          if (data.matched) {
-            setFounded(data);
-            console.log(
-              `✅ MATCH FOUND: ${data.name} (${data.similarity.toFixed(
-                2
-              )}), bbox:${data}`
+          
+          // Update founded state
+          setFounded(data);
+          
+          // Draw bounding box if canvas is available
+          if (overlayCanvasRef.current) {
+            drawBoundingBox(
+              overlayCanvasRef.current,
+              data.bbox,
+              data.name,
+              data.confidence_percentage,
+              data.matched || false
             );
           }
-          console.log(
-            `✅ MATCH FOUND: ${data.name} (${data.similarity.toFixed(
-              2
-            )}), bbox:${data}`
-          );
+
+          if (data.matched) {
+            console.log(
+              `✅ MATCH FOUND: ${data.name} (${data.confidence_percentage}%), bbox:${JSON.stringify(data.bbox)}`
+            );
+          } else if (data.bbox) {
+            console.log(`❌ Face detected but no match, bbox:${JSON.stringify(data.bbox)}`);
+          }
         } catch (err) {
           console.error("Error parsing WebSocket message:", err);
         }
@@ -143,6 +212,28 @@ export default function SearchDetailPage() {
     if (isCameraActive && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
       videoRef.current.play().catch((err) => console.error(err));
+      
+      // Set up overlay canvas dimensions
+      if (overlayCanvasRef.current && videoRef.current) {
+        const video = videoRef.current;
+        const canvas = overlayCanvasRef.current;
+        
+        const updateCanvasSize = () => {
+          const rect = video.getBoundingClientRect();
+          canvas.width = rect.width;
+          canvas.height = rect.height;
+        };
+        
+        // Set initial size
+        video.addEventListener('loadedmetadata', updateCanvasSize);
+        // Update on resize
+        window.addEventListener('resize', updateCanvasSize);
+        
+        return () => {
+          video.removeEventListener('loadedmetadata', updateCanvasSize);
+          window.removeEventListener('resize', updateCanvasSize);
+        };
+      }
     }
   }, [isCameraActive]);
 
@@ -165,6 +256,15 @@ export default function SearchDetailPage() {
     }
 
     if (videoRef.current) videoRef.current.srcObject = null;
+    
+    // Clear overlay canvas
+    if (overlayCanvasRef.current) {
+      const ctx = overlayCanvasRef.current.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+      }
+    }
+    
     setIsCameraActive(false);
     setFounded(null);
   };
@@ -218,10 +318,15 @@ export default function SearchDetailPage() {
                   muted
                   className="w-full h-full object-cover"
                 />
-                <canvas ref={canvasRef} />
+                <canvas 
+                  ref={overlayCanvasRef}
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  style={{ zIndex: 10 }}
+                />
+                <canvas ref={canvasRef} style={{ display: 'none' }} />
 
                 {!isCameraActive && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/80">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/80" style={{ zIndex: 20 }}>
                     <Video className="h-16 w-16 text-muted-foreground mb-4" />
                     <p className="text-lg font-medium text-muted-foreground mb-2">
                       Камера идэвхгүй
@@ -356,7 +461,7 @@ export default function SearchDetailPage() {
                                 Хайж буй хүн олдсон
                               </div>
                               <div className="text-xs text-green-700 mt-0.5 truncate">
-                                {founded?.name || person.name} {founded?.bbox}
+                                {founded?.name || person.name} - {founded?.confidence_percentage?.toFixed(1)}%
                               </div>
                             </div>
                           </div>
@@ -366,15 +471,13 @@ export default function SearchDetailPage() {
                               <div
                                 className="h-2 rounded-full bg-green-600"
                                 style={{
-                                  width: `${Math.round(
-                                    (founded?.similarity ?? 0) * 100
-                                  )}%`,
+                                  width: `${founded?.confidence_percentage ?? 0}%`,
                                 }}
                               />
                             </div>
                             <div className="mt-2 text-xs text-green-800">
                               Ижил төстэй байдал{" "}
-                              {Math.round((founded?.similarity ?? 0) * 100)}%
+                              {founded?.confidence_percentage?.toFixed(1) ?? 0}%
                             </div>
                           </div>
                         </div>
