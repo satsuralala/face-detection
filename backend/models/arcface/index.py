@@ -33,7 +33,7 @@ if __name__ == "__main__":
     faces = app.get(img)
     embeddings = []
     for face in faces:
-        embedding = face.embedding  # 512-d vector
+        embedding = face.embedding
         embeddings.append(embedding)
 
     print("Number of faces detected:", len(embeddings))
