@@ -3,11 +3,13 @@ import numpy as np
 import insightface
 from insightface.app import FaceAnalysis
 
+
 class ArcFaceModel:
     def __init__(self, ctx_id=0):
-        self.app = FaceAnalysis(providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        self.app = FaceAnalysis(
+            providers=['CPUExecutionProvider', 'CPUExecutionProvider'])
         self.app.prepare(ctx_id=ctx_id, det_size=(640, 640))
-    
+
     def get_embedding_from_frame(self, frame):
         """
         Extract facial embedding from a frame/image
@@ -22,9 +24,11 @@ class ArcFaceModel:
             print(f"Error extracting embedding: {e}")
             return None
 
+
 # Test code (only runs when this file is run directly)
 if __name__ == "__main__":
-    app = FaceAnalysis(providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+    app = FaceAnalysis(
+        providers=['CPUExecutionProvider', 'CPUExecutionProvider'])
     app.prepare(ctx_id=0, det_size=(640, 640))
     img = insightface.data.get_image('t1')
     faces = app.get(img)
